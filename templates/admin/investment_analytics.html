@@ -1,0 +1,292 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Investment Analytics - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.analytics-card {
+    border-left: 4px solid #007bff;
+}
+.analytics-card.success {
+    border-left-color: #28a745;
+}
+.analytics-card.warning {
+    border-left-color: #ffc107;
+}
+.analytics-card.info {
+    border-left-color: #17a2b8;
+}
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #495057;
+}
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Investment Analytics</h2>
+                <div>
+                    <button type="button" class="btn btn-success" onclick="runDailyReturns()">
+                        <i class="fas fa-play"></i> Run Daily Returns
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="location.reload()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            {% if analytics %}
+            <!-- Package Analytics -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4>Package Statistics</h4>
+                </div>
+                <div class="col-md-4">
+                    <div class="card analytics-card">
+                        <div class="card-body text-center">
+                            <div class="stat-number">{{ analytics.packages.total }}</div>
+                            <div class="stat-label">Total Packages</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card analytics-card success">
+                        <div class="card-body text-center">
+                            <div class="stat-number">{{ analytics.packages.active }}</div>
+                            <div class="stat-label">Active Packages</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card analytics-card info">
+                        <div class="card-body text-center">
+                            <div class="stat-number">${{ "{:,.0f}".format(analytics.packages.total_capacity) }}</div>
+                            <div class="stat-label">Total Capacity</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Investment Analytics -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4>Investment Statistics</h4>
+                </div>
+                <div class="col-md-3">
+                    <div class="card analytics-card">
+                        <div class="card-body text-center">
+                            <div class="stat-number">{{ analytics.investments.total }}</div>
+                            <div class="stat-label">Total Investments</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card analytics-card success">
+                        <div class="card-body text-center">
+                            <div class="stat-number">{{ analytics.investments.active }}</div>
+                            <div class="stat-label">Active Investments</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card analytics-card warning">
+                        <div class="card-body text-center">
+                            <div class="stat-number">${{ "{:,.2f}".format(analytics.investments.total_invested) }}</div>
+                            <div class="stat-label">Total Invested</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card analytics-card info">
+                        <div class="card-body text-center">
+                            <div class="stat-number">${{ "{:,.2f}".format(analytics.investments.total_returns_paid) }}</div>
+                            <div class="stat-label">Returns Paid</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Return Analytics -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4>Return Distribution</h4>
+                </div>
+                <div class="col-md-3">
+                    <div class="card analytics-card">
+                        <div class="card-body text-center">
+                            <div class="stat-number">{{ analytics.returns.total_distributions }}</div>
+                            <div class="stat-label">Total Distributions</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card analytics-card success">
+                        <div class="card-body text-center">
+                            <div class="stat-number">{{ analytics.returns.today_distributions }}</div>
+                            <div class="stat-label">Today's Distributions</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card analytics-card warning">
+                        <div class="card-body text-center">
+                            <div class="stat-number">${{ "{:,.2f}".format(analytics.returns.today_amount) }}</div>
+                            <div class="stat-label">Today's Amount</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card analytics-card info">
+                        <div class="card-body text-center">
+                            <div class="stat-number">${{ "{:,.2f}".format(analytics.returns.total_amount) }}</div>
+                            <div class="stat-label">Total Amount</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Analytics -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4>User Statistics</h4>
+                </div>
+                <div class="col-md-6">
+                    <div class="card analytics-card">
+                        <div class="card-body text-center">
+                            <div class="stat-number">{{ analytics.users.total_investors }}</div>
+                            <div class="stat-label">Total Investors</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card analytics-card success">
+                        <div class="card-body text-center">
+                            <div class="stat-number">{{ analytics.users.active_investors }}</div>
+                            <div class="stat-label">Active Investors</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4>Performance Metrics</h4>
+                </div>
+                <div class="col-md-4">
+                    <div class="card analytics-card info">
+                        <div class="card-body text-center">
+                            {% set roi = (analytics.investments.total_returns_paid / analytics.investments.total_invested * 100) if analytics.investments.total_invested > 0 else 0 %}
+                            <div class="stat-number">{{ "%.2f"|format(roi) }}%</div>
+                            <div class="stat-label">Average ROI</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card analytics-card warning">
+                        <div class="card-body text-center">
+                            {% set avg_investment = (analytics.investments.total_invested / analytics.investments.total) if analytics.investments.total > 0 else 0 %}
+                            <div class="stat-number">${{ "{:,.0f}".format(avg_investment) }}</div>
+                            <div class="stat-label">Avg Investment</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card analytics-card success">
+                        <div class="card-body text-center">
+                            {% set participation_rate = (analytics.users.total_investors / analytics.users.total_investors * 100) if analytics.users.total_investors > 0 else 0 %}
+                            <div class="stat-number">{{ "%.1f"|format(participation_rate) }}%</div>
+                            <div class="stat-label">Participation Rate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('admin_investment.list_packages') }}" class="btn btn-primary btn-block w-100 mb-2">
+                                        <i class="fas fa-box"></i> Manage Packages
+                                    </a>
+                                </div>
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('admin_investment.list_user_investments') }}" class="btn btn-info btn-block w-100 mb-2">
+                                        <i class="fas fa-users"></i> View Investments
+                                    </a>
+                                </div>
+                                <div class="col-md-3">
+                                    <a href="{{ url_for('admin_investment.create_package') }}" class="btn btn-success btn-block w-100 mb-2">
+                                        <i class="fas fa-plus"></i> Create Package
+                                    </a>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="btn btn-warning btn-block w-100 mb-2" onclick="runDailyReturns()">
+                                        <i class="fas fa-play"></i> Run Returns
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="alert alert-warning">
+                <h5>Analytics Data Unavailable</h5>
+                <p>Unable to load analytics data. Please check the system logs for errors.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function runDailyReturns() {
+    if (confirm('Are you sure you want to run daily returns calculation? This will process returns for all eligible investments.')) {
+        // Show loading state
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        button.disabled = true;
+
+        fetch('/admin/investments/daily-returns/run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error running daily returns. Please try again.');
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error running daily returns. Please try again.');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
+}
+</script>
+{% endblock %}

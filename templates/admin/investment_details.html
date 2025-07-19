@@ -1,0 +1,289 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Investment Details - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.investment-detail-card {
+    border-left: 4px solid #007bff;
+}
+.settlement-actions {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+.action-button {
+    margin: 0.25rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Investment Details #{{ investment.id }}</h2>
+                <a href="{{ url_for('admin_investment.list_user_investments') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Investments
+                </a>
+            </div>
+
+            <!-- Investment Overview -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card investment-detail-card">
+                        <div class="card-header">
+                            <h5>Investment Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Investment ID:</strong></td>
+                                            <td>{{ investment.id }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>User:</strong></td>
+                                            <td>
+                                                <a href="{{ url_for('admin_web.user_detail', user_id=investment.user.id) }}">
+                                                    {{ investment.user.username }} (ID: {{ investment.user.id }})
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Package:</strong></td>
+                                            <td>{{ investment.package.name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Amount Invested:</strong></td>
+                                            <td>${{ "{:,.2f}".format(investment.amount_invested) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Investment Date:</strong></td>
+                                            <td>{{ investment.investment_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Returns Start:</strong></td>
+                                            <td>{{ investment.returns_start_date.strftime('%Y-%m-%d') if investment.returns_start_date else 'Not set' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Maturity Date:</strong></td>
+                                            <td>{{ investment.maturity_date.strftime('%Y-%m-%d') if investment.maturity_date else 'Not set' }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Status:</strong></td>
+                                            <td>
+                                                {% if investment.status.value == 'active' %}
+                                                <span class="badge bg-success">Active</span>
+                                                {% elif investment.status.value == 'waiting_launch' %}
+                                                <span class="badge bg-warning">Waiting Launch</span>
+                                                {% elif investment.status.value == 'matured' %}
+                                                <span class="badge bg-primary">Matured</span>
+                                                {% elif investment.status.value == 'pending' %}
+                                                <span class="badge bg-secondary">Pending</span>
+                                                {% else %}
+                                                <span class="badge bg-danger">{{ investment.status.value.title() }}</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Total Returns Paid:</strong></td>
+                                            <td>${{ "{:,.2f}".format(investment.total_returns_paid) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Expected Total Return:</strong></td>
+                                            <td>${{ "{:,.2f}".format(investment.expected_total_return) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Returns Remaining:</strong></td>
+                                            <td>${{ "{:,.2f}".format(investment.returns_remaining) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Last Return Date:</strong></td>
+                                            <td>{{ investment.last_return_date.strftime('%Y-%m-%d') if investment.last_return_date else 'Never' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Progress:</strong></td>
+                                            <td>
+                                                {% set progress = (investment.total_returns_paid / investment.expected_total_return * 100) if investment.expected_total_return > 0 else 0 %}
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         style="width: {{ progress }}%" 
+                                                         aria-valuenow="{{ progress }}" 
+                                                         aria-valuemin="0" aria-valuemax="100">
+                                                        {{ "%.1f"|format(progress) }}%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Package Details -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Package Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-borderless table-sm">
+                                <tr>
+                                    <td><strong>Return Rate:</strong></td>
+                                    <td>{{ investment.package.total_return_percentage }}%</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Duration:</strong></td>
+                                    <td>{{ investment.package.duration_days }} days</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Daily Rate:</strong></td>
+                                    <td>{{ "%.3f"|format(investment.package.daily_return_rate) }}%</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Expected Daily:</strong></td>
+                                    <td>${{ "{:.2f}".format(investment.expected_daily_return) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Actions -->
+            {% if investment.status.value in ['active', 'matured'] %}
+            <div class="settlement-actions">
+                <h5>Admin Actions</h5>
+                
+                {% if investment.status.value == 'active' %}
+                <!-- Active Investment Actions -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Manual Return Distribution</h6>
+                        <form method="POST" action="{{ url_for('admin_investment.manual_return_distribution', investment_id=investment.id) }}" class="d-inline">
+                            <div class="input-group">
+                                <input type="number" name="amount" class="form-control" step="0.01" min="0.01" 
+                                       max="{{ investment.returns_remaining }}" placeholder="Amount" required>
+                                <button type="submit" class="btn btn-warning action-button">
+                                    <i class="fas fa-hand-holding-usd"></i> Distribute Return
+                                </button>
+                            </div>
+                            <small class="text-muted">Max: ${{ "{:,.2f}".format(investment.returns_remaining) }}</small>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Force Mature</h6>
+                        <form method="POST" action="{{ url_for('admin_investment.force_mature_investment', investment_id=investment.id) }}" 
+                              onsubmit="return confirm('Are you sure you want to force mature this investment?')" class="d-inline">
+                            <button type="submit" class="btn btn-danger action-button">
+                                <i class="fas fa-fast-forward"></i> Force Mature
+                            </button>
+                        </form>
+                        <small class="text-muted d-block">This will immediately mature the investment</small>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if investment.status.value == 'matured' %}
+                <!-- Matured Investment Settlement -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Settlement Options</h6>
+                        <form method="POST" action="{{ url_for('admin_investment.settle_investment', investment_id=investment.id) }}" 
+                              onsubmit="return confirm('Are you sure you want to settle this investment?')">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="settlement_option">Settlement Option:</label>
+                                    <select name="settlement_option" class="form-select" required>
+                                        <option value="available_fund">Return to Available Fund</option>
+                                        <option value="keep_invested">Keep in Investment Wallet</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="settlement_fee">Settlement Fee (%):</label>
+                                    <input type="number" name="settlement_fee" class="form-control" 
+                                           step="0.1" min="0" max="10" value="0" placeholder="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label>&nbsp;</label>
+                                    <button type="submit" class="btn btn-success d-block">
+                                        <i class="fas fa-check-circle"></i> Settle Investment
+                                    </button>
+                                </div>
+                                <div class="col-md-2">
+                                    <label>&nbsp;</label>
+                                    <div class="text-muted small">
+                                        Principal: ${{ "{:,.2f}".format(investment.amount_invested) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Return History -->
+            {% if returns %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Return History (Last 100)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Days Since Start</th>
+                                    <th>Status</th>
+                                    <th>Processed At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for return in returns %}
+                                <tr>
+                                    <td>{{ return.return_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>${{ "{:.2f}".format(return.return_amount) }}</td>
+                                    <td>{{ return.days_since_start }}</td>
+                                    <td>
+                                        {% if return.status.value == 'paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                        {% elif return.status.value == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">{{ return.status.value.title() }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ return.processed_at.strftime('%Y-%m-%d %H:%M') if return.processed_at else '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card mt-4">
+                <div class="card-body text-center">
+                    <h5>No Return History</h5>
+                    <p class="text-muted">No returns have been distributed for this investment yet.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

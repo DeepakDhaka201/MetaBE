@@ -1,0 +1,155 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Investment Packages - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.badge { font-size: 0.75em; }
+.btn-group-sm .btn { padding: 0.25rem 0.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Investment Packages</h2>
+                <a href="{{ url_for('admin_investment.create_package') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create New Package
+                </a>
+            </div>
+
+            {% if packages %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Investment Range</th>
+                                    <th>Return</th>
+                                    <th>Duration</th>
+                                    <th>Launch Date</th>
+                                    <th>Status</th>
+                                    <th>Investors</th>
+                                    <th>Total Invested</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for package in packages %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ package.name }}</strong>
+                                        {% if package.is_featured %}
+                                        <span class="badge badge-warning ml-1">Featured</span>
+                                        {% endif %}
+                                        {% if package.description %}
+                                        <br><small class="text-muted">{{ package.description[:50] }}{% if package.description|length > 50 %}...{% endif %}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        ${{ "{:,.2f}".format(package.min_amount) }}
+                                        {% if package.max_amount %}
+                                        - ${{ "{:,.2f}".format(package.max_amount) }}
+                                        {% else %}
+                                        - No Limit
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ package.total_return_percentage }}%</strong>
+                                        <br><small class="text-muted">{{ "%.3f"|format(package.daily_return_rate) }}% daily</small>
+                                    </td>
+                                    <td>{{ package.duration_days }} days</td>
+                                    <td>
+                                        {% if package.launch_date %}
+                                        {{ package.launch_date.strftime('%Y-%m-%d') }}
+                                        {% else %}
+                                        <span class="text-muted">Not set</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if package.status.value == 'active' %}
+                                        <span class="badge badge-success">Active</span>
+                                        {% elif package.status.value == 'draft' %}
+                                        <span class="badge badge-secondary">Draft</span>
+                                        {% elif package.status.value == 'launched' %}
+                                        <span class="badge badge-info">Launched</span>
+                                        {% elif package.status.value == 'completed' %}
+                                        <span class="badge badge-primary">Completed</span>
+                                        {% else %}
+                                        <span class="badge badge-danger">{{ package.status.value.title() }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ package.total_investors }}</td>
+                                    <td>${{ "{:,.2f}".format(package.total_invested) }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('admin_investment.edit_package', package_id=package.id) }}" 
+                                               class="btn btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% if package.total_investors == 0 %}
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    onclick="confirmDelete({{ package.id }}, '{{ package.name }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5>No Investment Packages Found</h5>
+                    <p class="text-muted">Create your first investment package to get started.</p>
+                    <a href="{{ url_for('admin_investment.create_package') }}" class="btn btn-primary">
+                        Create First Package
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the package "<span id="packageName"></span>"?</p>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete Package</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(packageId, packageName) {
+    document.getElementById('packageName').textContent = packageName;
+    document.getElementById('deleteForm').action = '/admin/investments/packages/' + packageId + '/delete';
+    $('#deleteModal').modal('show');
+}
+</script>
+{% endblock %}

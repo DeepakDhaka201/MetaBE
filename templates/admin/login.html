@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - MetaX</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 3rem;
+            width: 100%;
+            max-width: 450px;
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .login-header .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        
+        .login-header .logo i {
+            font-size: 2rem;
+            color: white;
+        }
+        
+        .login-header h1 {
+            color: #333;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .login-header p {
+            color: #666;
+            margin: 0;
+        }
+        
+        .form-floating {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        
+        .btn-login .spinner-border {
+            width: 1.2rem;
+            height: 1.2rem;
+            margin-right: 0.5rem;
+        }
+        
+        .alert {
+            border-radius: 12px;
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+        
+        .alert-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        
+        .alert-success {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+        
+        .alert-info {
+            background-color: rgba(23, 162, 184, 0.1);
+            color: #17a2b8;
+        }
+        
+        .forgot-password {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        
+        .forgot-password a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+        
+        .footer-text {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .input-group-text {
+            background: transparent;
+            border: 2px solid #e9ecef;
+            border-right: none;
+            border-radius: 12px 0 0 12px;
+        }
+        
+        .input-group .form-control {
+            border-left: none;
+            border-radius: 0 12px 12px 0;
+        }
+        
+        .input-group:focus-within .input-group-text {
+            border-color: #667eea;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            z-index: 10;
+        }
+        
+        .password-toggle:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h1>Admin Portal</h1>
+            <p>MetaX Coin Administration</p>
+        </div>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form id="loginForm" method="POST">
+            <div class="form-floating">
+                <input type="text" class="form-control" id="username" name="username" placeholder="Username or Email" required>
+                <label for="username">
+                    <i class="fas fa-user me-2"></i>Username or Email
+                </label>
+            </div>
+            
+            <div class="form-floating position-relative">
+                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                <label for="password">
+                    <i class="fas fa-lock me-2"></i>Password
+                </label>
+                <button type="button" class="password-toggle" onclick="togglePassword()">
+                    <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                </button>
+            </div>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="rememberMe" name="remember_me">
+                <label class="form-check-label" for="rememberMe">
+                    Remember me for 30 days
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-login" id="loginBtn">
+                <span class="btn-text">
+                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                </span>
+                <span class="btn-loading d-none">
+                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                    Signing in...
+                </span>
+            </button>
+        </form>
+        
+        <div class="forgot-password">
+            <a href="#" onclick="showForgotPassword()">
+                <i class="fas fa-question-circle me-1"></i>Forgot your password?
+            </a>
+        </div>
+        
+        <div class="footer-text">
+            <small>&copy; 2024 MetaX Coin. All rights reserved.</small>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    
+    <script>
+        // Auto-hide alerts after 5 seconds
+        setTimeout(function() {
+            $('.alert').fadeOut('slow');
+        }, 5000);
+        
+        // Password toggle functionality
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('passwordToggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+        
+        // Handle form submission
+        $('#loginForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const btn = $('#loginBtn');
+            const btnText = btn.find('.btn-text');
+            const btnLoading = btn.find('.btn-loading');
+
+            // Show loading state
+            btnText.addClass('d-none');
+            btnLoading.removeClass('d-none');
+            btn.prop('disabled', true);
+
+            // Use traditional form submission for session-based auth
+            // Create a hidden form and submit it
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("admin_web.login") }}';
+
+            // Add form fields
+            const usernameField = document.createElement('input');
+            usernameField.type = 'hidden';
+            usernameField.name = 'username';
+            usernameField.value = $('#username').val();
+            form.appendChild(usernameField);
+
+            const passwordField = document.createElement('input');
+            passwordField.type = 'hidden';
+            passwordField.name = 'password';
+            passwordField.value = $('#password').val();
+            form.appendChild(passwordField);
+
+            const rememberField = document.createElement('input');
+            rememberField.type = 'hidden';
+            rememberField.name = 'remember_me';
+            rememberField.value = $('#rememberMe').is(':checked') ? 'on' : '';
+            form.appendChild(rememberField);
+
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
+        });
+        
+        function showAlert(message, type) {
+            // Remove existing alerts
+            $('.alert').remove();
+            
+            // Create new alert
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${type === 'danger' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            // Insert alert before form
+            $('#loginForm').before(alertHtml);
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                $('.alert').fadeOut('slow');
+            }, 5000);
+        }
+        
+        function showForgotPassword() {
+            showAlert('Please contact your system administrator to reset your password.', 'info');
+        }
+        
+        // Focus on username field when page loads
+        $(document).ready(function() {
+            $('#username').focus();
+        });
+        
+        // Handle Enter key in form fields
+        $('#username, #password').on('keypress', function(e) {
+            if (e.which === 13) {
+                $('#loginForm').submit();
+            }
+        });
+    </script>
+</body>
+</html>

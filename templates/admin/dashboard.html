@@ -1,0 +1,300 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Admin Dashboard - MetaX{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#quickActionsModal">
+        <i class="fas fa-bolt me-1"></i>Quick Actions
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-number">{{ "{:,}".format(stats['total_users'] or 0) }}</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card success">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-number">{{ "{:,}".format(stats['active_users'] or 0) }}</div>
+                    <div class="stat-label">Active Users</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card warning">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-number">{{ "{:,}".format(stats['pending_transactions'] or 0) }}</div>
+                    <div class="stat-label">Pending Transactions</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stat-card info">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-number">{{ "{:,}".format(stats['total_transactions'] or 0) }}</div>
+                    <div class="stat-label">Total Transactions</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Overview -->
+<div class="row mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-dollar-sign me-2"></i>USDT Balance</h5>
+            </div>
+            <div class="card-body text-center">
+                <h3 class="text-success">${{ "{:,.2f}".format(stats['total_usdt_balance'] or 0) }}</h3>
+                <small class="text-muted">Total USDT in system</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-coins me-2"></i>MXC Balance</h5>
+            </div>
+            <div class="card-body text-center">
+                <h3 class="text-primary">{{ "{:,.2f}".format(stats['total_mxc_balance'] or 0) }} MXC</h3>
+                <small class="text-muted">Total MXC in system</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>MXC Price</h5>
+            </div>
+            <div class="card-body text-center">
+                {% if stats['mxc_price'] %}
+                <h3 class="text-warning">${{ "{:.6f}".format(stats['mxc_price'].price) }}</h3>
+                <small class="text-muted">Current MXC Price</small>
+                {% else %}
+                <h3 class="text-muted">N/A</h3>
+                <small class="text-muted">Price not set</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Wallet Pool Stats -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Wallet Pool Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ stats['total_wallets'] or 0 }}</h4>
+                        <small class="text-muted">Total Wallets</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">{{ stats['active_wallets'] or 0 }}</h4>
+                        <small class="text-muted">Active Wallets</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>System Health</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>User Activity</span>
+                    <span class="badge bg-success">{{ "{:.1f}%".format((stats['active_users'] / stats['total_users'] * 100) if stats['total_users'] > 0 else 0) }}</span>
+                </div>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-success" style="width: {{ (stats['active_users'] / stats['total_users'] * 100) if stats['total_users'] > 0 else 0 }}%"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Wallet Utilization</span>
+                    <span class="badge bg-info">{{ "{:.1f}%".format((stats['active_wallets'] / stats['total_wallets'] * 100) if stats['total_wallets'] > 0 else 0) }}</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-info" style="width: {{ (stats['active_wallets'] / stats['total_wallets'] * 100) if stats['total_wallets'] > 0 else 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Transactions</h5>
+                <a href="{{ url_for('admin_web.transactions') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr>
+                                <td>#{{ transaction.id }}</td>
+                                <td>{{ transaction.user.username if transaction.user else 'N/A' }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ transaction.transaction_type.value if transaction.transaction_type else 'N/A' }}</span>
+                                </td>
+                                <td>${{ "{:.2f}".format(transaction.amount) }}</td>
+                                <td>
+                                    {% if transaction.status.value == 'pending' %}
+                                    <span class="badge status-pending">Pending</span>
+                                    {% elif transaction.status.value == 'completed' %}
+                                    <span class="badge status-completed">Completed</span>
+                                    {% else %}
+                                    <span class="badge status-failed">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ transaction.created_at.strftime('%m/%d %H:%M') if transaction.created_at else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>No recent transactions</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Recent Users</h5>
+                <a href="{{ url_for('admin_web.users') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_users %}
+                {% for user in recent_users %}
+                <div class="d-flex align-items-center mb-3">
+                    <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-3">
+                        <i class="fas fa-user text-white"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0">{{ user.username }}</h6>
+                        <small class="text-muted">{{ user.email }}</small>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted">{{ user.created_at.strftime('%m/%d') if user.created_at else 'N/A' }}</small>
+                        {% if user.is_active %}
+                        <br><span class="badge status-active">Active</span>
+                        {% else %}
+                        <br><span class="badge status-inactive">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-users fa-3x mb-3"></i>
+                    <p>No recent users</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions Modal -->
+<div class="modal fade" id="quickActionsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Quick Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin_web.mxc_price') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-chart-line me-2"></i>Update MXC Price
+                    </a>
+                    <a href="{{ url_for('admin_web.transactions') }}?status=pending" class="btn btn-outline-warning">
+                        <i class="fas fa-clock me-2"></i>Review Pending Transactions
+                    </a>
+                    <a href="{{ url_for('admin_web.wallet_pool') }}" class="btn btn-outline-info">
+                        <i class="fas fa-wallet me-2"></i>Manage Wallet Pool
+                    </a>
+                    <a href="{{ url_for('admin_web.config') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-cogs me-2"></i>System Configuration
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+}
+</style>
+{% endblock %}

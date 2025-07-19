@@ -1,0 +1,558 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Transaction Management - MetaX Admin{% endblock %}
+
+{% block page_title %}Transaction Management{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#bulkActionsModal">
+        <i class="fas fa-tasks me-1"></i>Bulk Actions
+    </button>
+    <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#exportModal">
+        <i class="fas fa-download me-1"></i>Export
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Filter and Search -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="all" {{ 'selected' if status == 'all' else '' }}>All Statuses</option>
+                    <option value="pending" {{ 'selected' if status == 'pending' else '' }}>Pending</option>
+                    <option value="completed" {{ 'selected' if status == 'completed' else '' }}>Completed</option>
+                    <option value="failed" {{ 'selected' if status == 'failed' else '' }}>Failed</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="type" class="form-label">Type</label>
+                <select class="form-select" id="type" name="type">
+                    <option value="all" {{ 'selected' if transaction_type == 'all' else '' }}>All Types</option>
+                    <option value="deposit" {{ 'selected' if transaction_type == 'deposit' else '' }}>Deposit</option>
+                    <option value="withdrawal" {{ 'selected' if transaction_type == 'withdrawal' else '' }}>Withdrawal</option>
+                    <option value="transfer" {{ 'selected' if transaction_type == 'transfer' else '' }}>Transfer</option>
+                    <option value="income" {{ 'selected' if transaction_type == 'income' else '' }}>Income</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="dateRange" class="form-label">Date Range</label>
+                <select class="form-select" id="dateRange" name="date_range">
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i>Filter
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0">{{ transactions.items|selectattr('status.value', 'equalto', 'pending')|list|length if transactions else 0 }}</h4>
+                        <small>Pending</small>
+                    </div>
+                    <i class="fas fa-clock fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0">{{ transactions.items|selectattr('status.value', 'equalto', 'completed')|list|length if transactions else 0 }}</h4>
+                        <small>Completed</small>
+                    </div>
+                    <i class="fas fa-check fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0">{{ transactions.items|selectattr('status.value', 'equalto', 'failed')|list|length if transactions else 0 }}</h4>
+                        <small>Failed</small>
+                    </div>
+                    <i class="fas fa-times fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0">{{ transactions.total if transactions else 0 }}</h4>
+                        <small>Total</small>
+                    </div>
+                    <i class="fas fa-list fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-exchange-alt me-2"></i>Transactions
+            {% if transactions and transactions.total %}
+            <span class="badge bg-primary">{{ transactions.total }}</span>
+            {% endif %}
+        </h5>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+            <label class="form-check-label" for="selectAll">
+                Select All
+            </label>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if transactions and transactions.items %}
+        <div class="table-responsive">
+            <table class="table table-hover" id="transactionsTable">
+                <thead>
+                    <tr>
+                        <th width="40">
+                            <input type="checkbox" class="form-check-input" disabled>
+                        </th>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions.items %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input transaction-checkbox" 
+                                   value="{{ transaction.id }}" onchange="updateBulkActions()">
+                        </td>
+                        <td>
+                            <a href="#" class="text-decoration-none" data-bs-toggle="modal" 
+                               data-bs-target="#transactionModal" onclick="loadTransactionDetails({{ transaction.id }})">
+                                #{{ transaction.id }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if transaction.user %}
+                            <a href="{{ url_for('admin_web.user_detail', user_id=transaction.user.id) }}" 
+                               class="text-decoration-none">
+                                {{ transaction.user.username }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                {{ transaction.transaction_type.value if transaction.transaction_type else 'N/A' }}
+                            </span>
+                        </td>
+                        <td>
+                            <strong>${{ "{:.2f}".format(transaction.amount) }}</strong>
+                            {% if transaction.currency %}
+                            <small class="text-muted">{{ transaction.currency }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if transaction.status.value == 'pending' %}
+                            <span class="badge status-pending">Pending</span>
+                            {% elif transaction.status.value == 'completed' %}
+                            <span class="badge status-completed">Completed</span>
+                            {% else %}
+                            <span class="badge status-failed">Failed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ transaction.created_at.strftime('%m/%d/%Y') if transaction.created_at else 'N/A' }}</div>
+                            <small class="text-muted">{{ transaction.created_at.strftime('%H:%M') if transaction.created_at else '' }}</small>
+                        </td>
+                        <td>
+                            {% if transaction.status.value == 'pending' %}
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-success" 
+                                        onclick="approveTransaction({{ transaction.id }})" title="Approve">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger" 
+                                        onclick="rejectTransaction({{ transaction.id }})" title="Reject">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-primary btn-sm" 
+                                    data-bs-toggle="modal" data-bs-target="#transactionModal"
+                                    onclick="loadTransactionDetails({{ transaction.id }})" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if transactions.pages > 1 %}
+        <nav aria-label="Transactions pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if transactions.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin_web.transactions', page=transactions.prev_num, status=status, type=transaction_type) }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for page_num in transactions.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != transactions.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin_web.transactions', page=page_num, status=status, type=transaction_type) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if transactions.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin_web.transactions', page=transactions.next_num, status=status, type=transaction_type) }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-exchange-alt fa-3x mb-3"></i>
+            <h5>No Transactions Found</h5>
+            <p>No transactions match your filter criteria.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Bulk Actions Modal -->
+<div class="modal fade" id="bulkActionsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Selected transactions: <span id="selectedCount">0</span></p>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-success" onclick="bulkApprove()" id="bulkApproveBtn" disabled>
+                        <i class="fas fa-check me-1"></i>Approve Selected
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="bulkReject()" id="bulkRejectBtn" disabled>
+                        <i class="fas fa-times me-1"></i>Reject Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Details Modal -->
+<div class="modal fade" id="transactionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Transaction Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="transactionDetails">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Export Transactions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="exportForm">
+                    <div class="mb-3">
+                        <label for="exportFormat" class="form-label">Export Format</label>
+                        <select class="form-select" id="exportFormat" name="format">
+                            <option value="csv">CSV</option>
+                            <option value="excel">Excel</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Include Fields</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeUserDetails" name="include_user_details" checked>
+                            <label class="form-check-label" for="includeUserDetails">
+                                User Details
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeWalletInfo" name="include_wallet_info">
+                            <label class="form-check-label" for="includeWalletInfo">
+                                Wallet Information
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="exportTransactions()">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedTransactions = [];
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.transaction-checkbox');
+
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.transaction-checkbox:checked');
+    selectedTransactions = Array.from(checkboxes).map(cb => cb.value);
+
+    document.getElementById('selectedCount').textContent = selectedTransactions.length;
+
+    const bulkApproveBtn = document.getElementById('bulkApproveBtn');
+    const bulkRejectBtn = document.getElementById('bulkRejectBtn');
+
+    if (selectedTransactions.length > 0) {
+        bulkApproveBtn.disabled = false;
+        bulkRejectBtn.disabled = false;
+    } else {
+        bulkApproveBtn.disabled = true;
+        bulkRejectBtn.disabled = true;
+    }
+}
+
+function approveTransaction(transactionId) {
+    if (confirm('Are you sure you want to approve this transaction?')) {
+        $.ajax({
+            url: `/admin/api/transaction/${transactionId}/approve`,
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    showAlert(response.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert(response?.message || 'An error occurred', 'danger');
+            }
+        });
+    }
+}
+
+function rejectTransaction(transactionId) {
+    if (confirm('Are you sure you want to reject this transaction?')) {
+        $.ajax({
+            url: `/admin/api/transaction/${transactionId}/reject`,
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    showAlert(response.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert(response?.message || 'An error occurred', 'danger');
+            }
+        });
+    }
+}
+
+function loadTransactionDetails(transactionId) {
+    // Show loading state
+    $('#transactionDetails').html(`
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `);
+
+    // Fetch transaction details
+    $.ajax({
+        url: `/api/admin/transactions/${transactionId}`,
+        method: 'GET',
+        success: function(response) {
+            if (response.transaction) {
+                displayTransactionDetails(response.transaction);
+            } else {
+                $('#transactionDetails').html('<div class="alert alert-danger">Transaction not found</div>');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            $('#transactionDetails').html(`
+                <div class="alert alert-danger">
+                    Error loading transaction details: ${response?.message || 'Unknown error'}
+                </div>
+            `);
+        }
+    });
+}
+
+function displayTransactionDetails(transaction) {
+    const html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Basic Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>ID:</strong></td><td>#${transaction.id}</td></tr>
+                    <tr><td><strong>Transaction ID:</strong></td><td>${transaction.transaction_id}</td></tr>
+                    <tr><td><strong>Type:</strong></td><td><span class="badge bg-primary">${transaction.transaction_type}</span></td></tr>
+                    <tr><td><strong>Status:</strong></td><td><span class="badge bg-${getStatusColor(transaction.status)}">${transaction.status}</span></td></tr>
+                    <tr><td><strong>Amount:</strong></td><td>${transaction.amount} ${transaction.wallet_type}</td></tr>
+                    <tr><td><strong>Fee:</strong></td><td>${transaction.fee || '0'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Timestamps</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Created:</strong></td><td>${formatDate(transaction.created_at)}</td></tr>
+                    <tr><td><strong>Processed:</strong></td><td>${transaction.processed_at ? formatDate(transaction.processed_at) : 'N/A'}</td></tr>
+                    <tr><td><strong>Confirmed:</strong></td><td>${transaction.confirmed_at ? formatDate(transaction.confirmed_at) : 'N/A'}</td></tr>
+                </table>
+            </div>
+        </div>
+        ${transaction.description ? `<div class="mt-3"><h6>Description</h6><p>${transaction.description}</p></div>` : ''}
+        ${transaction.admin_notes ? `<div class="mt-3"><h6>Admin Notes</h6><p class="text-muted">${transaction.admin_notes}</p></div>` : ''}
+        ${transaction.error_message ? `<div class="mt-3"><div class="alert alert-danger"><strong>Error:</strong> ${transaction.error_message}</div></div>` : ''}
+        ${transaction.blockchain_txn_id ? `<div class="mt-3"><h6>Blockchain Details</h6><p><strong>Transaction Hash:</strong> <code>${transaction.blockchain_txn_id}</code></p></div>` : ''}
+    `;
+
+    $('#transactionDetails').html(html);
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': 'warning',
+        'processing': 'info',
+        'completed': 'success',
+        'failed': 'danger',
+        'cancelled': 'secondary',
+        'rejected': 'danger'
+    };
+    return colors[status.toLowerCase()] || 'secondary';
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString();
+}
+
+function exportTransactions() {
+    const form = document.getElementById('exportForm');
+    const formData = new FormData(form);
+
+    // Add current filter parameters
+    formData.append('status', '{{ status }}');
+    formData.append('type', '{{ transaction_type }}');
+
+    // Create download link
+    const params = new URLSearchParams(formData);
+    const url = `/api/admin/transactions/export?${params.toString()}`;
+
+    // Trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `transactions_export_${new Date().toISOString().split('T')[0]}.${formData.get('format')}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    modal.hide();
+
+    showAlert('Export started. Download will begin shortly.', 'info');
+}
+
+// Initialize table enhancements
+$(document).ready(function() {
+    enhanceDataTable('transactionsTable');
+});
+</script>
+{% endblock %}

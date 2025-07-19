@@ -1,0 +1,321 @@
+{% extends "admin/base.html" %}
+
+{% block title %}User Investments - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+.investment-status {
+    font-size: 0.8em;
+    padding: 0.25rem 0.5rem;
+}
+.filter-form {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>User Investments</h2>
+                <div>
+                    <button type="button" class="btn btn-success" onclick="runDailyReturns()">
+                        <i class="fas fa-play"></i> Run Daily Returns
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Invested</h5>
+                            <h3>${{ "{:,.2f}".format(summary.total_invested) }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Returns Paid</h5>
+                            <h3>${{ "{:,.2f}".format(summary.total_returns_paid) }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Active Investments</h5>
+                            <h3>{{ summary.active_investments }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Investments</h5>
+                            <h3>{{ summary.total_investments }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-form">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">All Statuses</option>
+                            <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="waiting_launch" {% if current_status == 'waiting_launch' %}selected{% endif %}>Waiting Launch</option>
+                            <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="matured" {% if current_status == 'matured' %}selected{% endif %}>Matured</option>
+                            <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="package_id" class="form-label">Package</label>
+                        <select class="form-select" id="package_id" name="package_id">
+                            <option value="">All Packages</option>
+                            {% for package in packages %}
+                            <option value="{{ package.id }}" {% if current_package_id == package.id|string %}selected{% endif %}>
+                                {{ package.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="user_id" class="form-label">User ID</label>
+                        <input type="number" class="form-control" id="user_id" name="user_id" 
+                               value="{{ current_user_id or '' }}" placeholder="Enter user ID">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                            <a href="{{ url_for('admin_investment.list_user_investments') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Clear
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Investments Table -->
+            {% if investments.items %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Package</th>
+                                    <th>Amount</th>
+                                    <th>Investment Date</th>
+                                    <th>Returns Start</th>
+                                    <th>Status</th>
+                                    <th>Returns Paid</th>
+                                    <th>Progress</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for investment in investments.items %}
+                                <tr>
+                                    <td>{{ investment.id }}</td>
+                                    <td>
+                                        <strong>{{ investment.user.username }}</strong>
+                                        <br><small class="text-muted">ID: {{ investment.user.id }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ investment.package.name }}</strong>
+                                        <br><small class="text-muted">{{ investment.package.total_return_percentage }}% / {{ investment.package.duration_days }}d</small>
+                                    </td>
+                                    <td>${{ "{:,.2f}".format(investment.amount_invested) }}</td>
+                                    <td>{{ investment.investment_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if investment.returns_start_date %}
+                                        {{ investment.returns_start_date.strftime('%Y-%m-%d') }}
+                                        {% else %}
+                                        <span class="text-muted">Not set</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if investment.status.value == 'active' %}
+                                        <span class="badge bg-success investment-status">Active</span>
+                                        {% elif investment.status.value == 'waiting_launch' %}
+                                        <span class="badge bg-warning investment-status">Waiting Launch</span>
+                                        {% elif investment.status.value == 'matured' %}
+                                        <span class="badge bg-primary investment-status">Matured</span>
+                                        {% elif investment.status.value == 'pending' %}
+                                        <span class="badge bg-secondary investment-status">Pending</span>
+                                        {% else %}
+                                        <span class="badge bg-danger investment-status">{{ investment.status.value.title() }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        ${{ "{:,.2f}".format(investment.total_returns_paid) }}
+                                        <br><small class="text-muted">of ${{ "{:,.2f}".format(investment.expected_total_return) }}</small>
+                                    </td>
+                                    <td>
+                                        {% set progress = (investment.total_returns_paid / investment.expected_total_return * 100) if investment.expected_total_return > 0 else 0 %}
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" role="progressbar" 
+                                                 style="width: {{ progress }}%" 
+                                                 aria-valuenow="{{ progress }}" 
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                                {{ "%.1f"|format(progress) }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('admin_investment.view_investment_details', investment_id=investment.id) }}"
+                                               class="btn btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if investment.status.value == 'matured' %}
+                                            <button type="button" class="btn btn-outline-success"
+                                                    onclick="quickSettle({{ investment.id }}, '{{ investment.package.name }}', {{ investment.amount_invested }})"
+                                                    title="Quick Settle">
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                            {% elif investment.status.value == 'active' %}
+                                            <button type="button" class="btn btn-outline-warning"
+                                                    onclick="forceMature({{ investment.id }}, '{{ investment.package.name }}')"
+                                                    title="Force Mature">
+                                                <i class="fas fa-fast-forward"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if investments.pages > 1 %}
+                    <nav aria-label="Investments pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if investments.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_investment.list_user_investments', page=investments.prev_num, status=current_status, package_id=current_package_id, user_id=current_user_id) }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in investments.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != investments.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_investment.list_user_investments', page=page_num, status=current_status, package_id=current_package_id, user_id=current_user_id) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">…</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if investments.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_investment.list_user_investments', page=investments.next_num, status=current_status, package_id=current_package_id, user_id=current_user_id) }}">Next</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5>No Investments Found</h5>
+                    <p class="text-muted">No investments match the current filters.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function runDailyReturns() {
+    if (confirm('Are you sure you want to run daily returns calculation? This will process returns for all eligible investments.')) {
+        fetch('/admin/investments/daily-returns/run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error running daily returns. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error running daily returns. Please try again.');
+        });
+    }
+}
+
+function quickSettle(investmentId, packageName, principalAmount) {
+    const settlementOption = confirm(
+        `Settle investment in "${packageName}" (Principal: $${principalAmount.toFixed(2)})?\n\n` +
+        `Click OK to return to Available Fund\n` +
+        `Click Cancel to keep in Investment Wallet`
+    ) ? 'available_fund' : 'keep_invested';
+
+    if (confirm(`Confirm settlement: Return $${principalAmount.toFixed(2)} to ${settlementOption.replace('_', ' ')}?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/investments/user-investments/${investmentId}/settle`;
+
+        const optionInput = document.createElement('input');
+        optionInput.type = 'hidden';
+        optionInput.name = 'settlement_option';
+        optionInput.value = settlementOption;
+
+        const feeInput = document.createElement('input');
+        feeInput.type = 'hidden';
+        feeInput.name = 'settlement_fee';
+        feeInput.value = '0';
+
+        form.appendChild(optionInput);
+        form.appendChild(feeInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function forceMature(investmentId, packageName) {
+    if (confirm(`Are you sure you want to force mature the investment in "${packageName}"?\n\nThis action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/investments/user-investments/${investmentId}/force-mature`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

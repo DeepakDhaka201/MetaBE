@@ -1,0 +1,557 @@
+{% extends "admin/base.html" %}
+
+{% block title %}MXC Price Management - MetaX Admin{% endblock %}
+
+{% block page_title %}MXC Price Management{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#updatePriceModal">
+        <i class="fas fa-edit me-1"></i>Update Price
+    </button>
+    <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#generateDataModal">
+        <i class="fas fa-chart-line me-1"></i>Generate Chart Data
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Current Price Overview -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-coins me-2"></i>Current MXC Price</h5>
+            </div>
+            <div class="card-body">
+                {% if current_price %}
+                <div class="row">
+                    <div class="col-md-3 text-center mb-3">
+                        <h2 class="text-primary mb-0">${{ "{:.6f}".format(current_price.price) }}</h2>
+                        <small class="text-muted">Current Price</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <h4 class="text-success mb-0">${{ "{:,.0f}".format(current_price.market_cap or 0) }}</h4>
+                        <small class="text-muted">Market Cap</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <h4 class="text-info mb-0">${{ "{:,.0f}".format(current_price.volume_24h or 0) }}</h4>
+                        <small class="text-muted">24h Volume</small>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <h4 class="text-warning mb-0">{{ "{:.2f}%".format(current_price.change_24h or 0) }}</h4>
+                        <small class="text-muted">24h Change</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <h4 class="text-primary mb-0">{{ current_price.rank or 'N/A' }}</h4>
+                        <small class="text-muted">Market Rank</small>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <h4 class="text-success mb-0">{{ "{:,.0f}".format(current_price.holders or 0) }}</h4>
+                        <small class="text-muted">Token Holders</small>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <h4 class="text-info mb-0">{{ "{:,.0f}".format(current_price.transactions_24h or 0) }}</h4>
+                        <small class="text-muted">24h Transactions</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">Last Updated:</small>
+                        <p class="mb-0">{{ current_price.last_updated[:19].replace('T', ' ') if current_price.last_updated else 'N/A' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">Updated By:</small>
+                        <p class="mb-0">{{ current_price.updated_by_user.username if current_price.updated_by_user else 'System' }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <h5>No Price Data Available</h5>
+                    <p>MXC price has not been set yet.</p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updatePriceModal">
+                        <i class="fas fa-plus me-1"></i>Set Initial Price
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Chart Data Stats</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <h3 class="text-primary">{{ chart_data|length }}</h3>
+                    <small class="text-muted">Total Data Points</small>
+                </div>
+                
+                {% if chart_data %}
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h5 class="text-success">${{ "{:.6f}".format(chart_data|map(attribute='price')|max) }}</h5>
+                        <small class="text-muted">Highest Price</small>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-danger">${{ "{:.6f}".format(chart_data|map(attribute='price')|min) }}</h5>
+                        <small class="text-muted">Lowest Price</small>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="text-center">
+                    <small class="text-muted">Latest Data Point:</small>
+                    <p class="mb-0">{{ chart_data[0].timestamp[:19].replace('T', ' ') if chart_data and chart_data[0].timestamp else 'N/A' }}</p>
+                </div>
+                {% else %}
+                <div class="text-center text-muted">
+                    <i class="fas fa-chart-line fa-2x mb-2"></i>
+                    <p>No chart data available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Price Chart -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Price Chart</h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary active" onclick="updateChart('24h')">24H</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="updateChart('7d')">7D</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="updateChart('30d')">30D</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="updateChart('all')">All</button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if chart_data %}
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <h5>No Chart Data Available</h5>
+                    <p>Generate chart data to see the price visualization.</p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateDataModal">
+                        <i class="fas fa-plus me-1"></i>Generate Chart Data
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Price History -->
+{% if chart_data %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Price History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Price</th>
+                                <th>Volume</th>
+                                <th>Change</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data_point in chart_data[:20] %}
+                            <tr>
+                                <td>{{ data_point.timestamp[:19].replace('T', ' ') if data_point.timestamp else 'N/A' }}</td>
+                                <td>
+                                    <strong>${{ "{:.6f}".format(data_point.price) }}</strong>
+                                </td>
+                                <td>${{ "{:,.0f}".format(data_point.volume or 0) }}</td>
+                                <td>
+                                    {% if data_point.change_percent %}
+                                    <span class="badge {{ 'bg-success' if data_point.change_percent > 0 else 'bg-danger' if data_point.change_percent < 0 else 'bg-secondary' }}">
+                                        {{ "{:+.2f}%".format(data_point.change_percent) }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" 
+                                            onclick="deleteDataPoint({{ data_point.id }})" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Update Price Modal -->
+<div class="modal fade" id="updatePriceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update MXC Price</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="updatePriceForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Price (USD)</label>
+                        <input type="number" class="form-control" id="price" name="price" 
+                               value="{{ current_price.price if current_price else '' }}" 
+                               step="0.000001" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="marketCap" class="form-label">Market Cap (USD)</label>
+                        <input type="number" class="form-control" id="marketCap" name="market_cap" 
+                               value="{{ current_price.market_cap if current_price else '' }}" 
+                               step="1" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="volume24h" class="form-label">24h Volume (USD)</label>
+                        <input type="number" class="form-control" id="volume24h" name="volume_24h" 
+                               value="{{ current_price.volume_24h if current_price else '' }}" 
+                               step="1" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="change24h" class="form-label">24h Change (%)</label>
+                        <input type="number" class="form-control" id="change24h" name="change_24h"
+                               value="{{ current_price.change_24h if current_price else '' }}"
+                               step="0.01">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="rank" class="form-label">Market Rank</label>
+                                <input type="text" class="form-control" id="rank" name="rank"
+                                       value="{{ current_price.rank if current_price else '' }}"
+                                       placeholder="#1247">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="holders" class="form-label">Token Holders</label>
+                                <input type="number" class="form-control" id="holders" name="holders"
+                                       value="{{ current_price.holders if current_price else '' }}"
+                                       step="1" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="transactions24h" class="form-label">24h Transactions</label>
+                                <input type="number" class="form-control" id="transactions24h" name="transactions_24h"
+                                       value="{{ current_price.transactions_24h if current_price else '' }}"
+                                       step="1" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="addToChart" name="add_to_chart" checked>
+                        <label class="form-check-label" for="addToChart">
+                            Add to chart data
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Update Price
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Chart Data Modal -->
+<div class="modal fade" id="generateDataModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Generate Chart Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="generateDataForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="timeframe" class="form-label">Timeframe</label>
+                        <select class="form-select" id="timeframe" name="timeframe" required>
+                            <option value="24h">24 Hours</option>
+                            <option value="7d">7 Days</option>
+                            <option value="30d">30 Days</option>
+                            <option value="90d">90 Days</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="dataPoints" class="form-label">Number of Data Points</label>
+                        <input type="number" class="form-control" id="dataPoints" name="data_points" 
+                               value="24" min="10" max="1000" required>
+                        <div class="form-text">Recommended: 24 for 24h, 168 for 7d, 720 for 30d</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="basePrice" class="form-label">Base Price (USD)</label>
+                        <input type="number" class="form-control" id="basePrice" name="base_price" 
+                               value="{{ current_price.price if current_price else '0.001' }}" 
+                               step="0.000001" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="volatility" class="form-label">Volatility (%)</label>
+                        <input type="number" class="form-control" id="volatility" name="volatility" 
+                               value="5" step="0.1" min="0.1" max="50" required>
+                        <div class="form-text">Higher values create more price variation</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-chart-line me-1"></i>Generate Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let priceChart = null;
+
+// Initialize chart on page load
+$(document).ready(function() {
+    {% if chart_data %}
+    initializePriceChart();
+    {% endif %}
+});
+
+function initializePriceChart() {
+    const chartData = {{ chart_data|tojson if chart_data else '[]' }};
+
+    if (chartData.length === 0) return;
+
+    const labels = chartData.map(point => new Date(point.timestamp).toLocaleDateString());
+    const prices = chartData.map(point => point.price);
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+
+    priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels.reverse(),
+            datasets: [{
+                label: 'MXC Price (USD)',
+                data: prices.reverse(),
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(6);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Price: $' + context.parsed.y.toFixed(6);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateChart(timeframe) {
+    // Update active button
+    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Filter chart data based on timeframe
+    const now = new Date();
+    let cutoffDate;
+
+    switch(timeframe) {
+        case '24h':
+            cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            break;
+        case '7d':
+            cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+        case '30d':
+            cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+        default:
+            cutoffDate = new Date(0); // Show all data
+    }
+
+    const allData = {{ chart_data|tojson if chart_data else '[]' }};
+    const filteredData = allData.filter(point => new Date(point.timestamp) >= cutoffDate);
+
+    if (priceChart && filteredData.length > 0) {
+        const labels = filteredData.map(point => new Date(point.timestamp).toLocaleDateString());
+        const prices = filteredData.map(point => point.price);
+
+        priceChart.data.labels = labels.reverse();
+        priceChart.data.datasets[0].data = prices.reverse();
+        priceChart.update();
+    }
+}
+
+// Handle price update form
+$('#updatePriceForm').on('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+
+    // Convert checkbox to boolean
+    data.add_to_chart = formData.has('add_to_chart');
+
+    $.ajax({
+        url: '/admin/api/mxc-price',
+        method: 'PUT',
+        headers: {
+            'Authorization': 'Bearer ' + getAdminToken(),
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(data),
+        success: function(response) {
+            if (response.success) {
+                showAlert(response.message, 'success');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('updatePriceModal'));
+                modal.hide();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert(response.message, 'danger');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            showAlert(response?.message || 'An error occurred', 'danger');
+        }
+    });
+});
+
+// Handle chart data generation form
+$('#generateDataForm').on('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+
+    $.ajax({
+        url: '/admin/api/mxc-chart/generate',
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + getAdminToken(),
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(data),
+        success: function(response) {
+            if (response.success) {
+                showAlert(response.message, 'success');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('generateDataModal'));
+                modal.hide();
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showAlert(response.message, 'danger');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            showAlert(response?.message || 'An error occurred', 'danger');
+        }
+    });
+});
+
+function deleteDataPoint(dataPointId) {
+    if (confirm('Are you sure you want to delete this data point?')) {
+        $.ajax({
+            url: `/admin/api/mxc-chart/${dataPointId}`,
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + getAdminToken()
+            },
+            success: function(response) {
+                if (response.success) {
+                    showAlert(response.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert(response?.message || 'An error occurred', 'danger');
+            }
+        });
+    }
+}
+
+// Auto-update recommended data points based on timeframe
+$('#timeframe').on('change', function() {
+    const timeframe = $(this).val();
+    let recommendedPoints;
+
+    switch(timeframe) {
+        case '24h':
+            recommendedPoints = 24;
+            break;
+        case '7d':
+            recommendedPoints = 168;
+            break;
+        case '30d':
+            recommendedPoints = 720;
+            break;
+        case '90d':
+            recommendedPoints = 2160;
+            break;
+        default:
+            recommendedPoints = 24;
+    }
+
+    $('#dataPoints').val(recommendedPoints);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,371 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Wallet Details - MetaX Admin{% endblock %}
+
+{% block page_title %}
+Wallet Details
+<small class="text-muted">{{ wallet.address[:10] }}...{{ wallet.address[-6:] }}</small>
+{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <a href="{{ url_for('admin_web.wallet_pool') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Back to Wallet Pool
+    </a>
+    <a href="{{ url_for('admin_web.wallet_assignments', wallet_id=wallet.id) }}" class="btn btn-outline-info">
+        <i class="fas fa-history me-1"></i>Full Assignment History
+    </a>
+    <button type="button" class="btn btn-outline-primary" onclick="location.reload()">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Wallet Status Alert -->
+{% if current_assignment %}
+<div class="alert alert-info mb-4">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h5 class="alert-heading mb-2">
+                <i class="fas fa-user-tag me-2"></i>Currently Assigned
+            </h5>
+            <p class="mb-1">
+                <strong>User:</strong> 
+                {% if current_assignment.user %}
+                <a href="{{ url_for('admin_web.user_detail', user_id=current_assignment.user.id) }}" class="text-decoration-none">
+                    {{ current_assignment.user.get_full_name() }} ({{ current_assignment.user.username }})
+                </a>
+                {% else %}
+                User #{{ current_assignment.user_id }}
+                {% endif %}
+            </p>
+            <p class="mb-1"><strong>Assigned:</strong> {{ current_assignment.assigned_at.strftime('%Y-%m-%d %H:%M:%S') if current_assignment.assigned_at else 'N/A' }}</p>
+            <p class="mb-0"><strong>Expires:</strong> {{ current_assignment.expires_at.strftime('%Y-%m-%d %H:%M:%S') if current_assignment.expires_at else 'N/A' }}</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <span class="badge bg-{{ 'success' if current_assignment.is_active else 'secondary' }} fs-6">
+                {{ 'Active' if current_assignment.is_active else 'Inactive' }}
+            </span>
+            {% if current_assignment.expected_amount %}
+            <div class="mt-2">
+                <small class="text-muted">Expected: {{ "%.2f"|format(current_assignment.expected_amount) }} USDT</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-success mb-4">
+    <h5 class="alert-heading">
+        <i class="fas fa-check-circle me-2"></i>Available
+    </h5>
+    <p class="mb-0">This wallet is currently available for assignment.</p>
+</div>
+{% endif %}
+
+<!-- Wallet Information Cards -->
+<div class="row mb-4">
+    <!-- Basic Information -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Basic Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless table-sm">
+                    <tr>
+                        <td width="120"><strong>ID:</strong></td>
+                        <td>#{{ wallet.id }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Address:</strong></td>
+                        <td>
+                            <code class="user-select-all">{{ wallet.address }}</code>
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" 
+                                    onclick="copyToClipboard('{{ wallet.address }}')" title="Copy Address">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Network:</strong></td>
+                        <td><span class="badge bg-info">{{ wallet.network or 'TRON' }}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if wallet.status.value == 'AVAILABLE' else 'warning' if wallet.status.value == 'IN_USE' else 'secondary' }}">
+                                {{ wallet.status.value }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Label:</strong></td>
+                        <td>{{ wallet.label or '<span class="text-muted">No label</span>' | safe }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Created:</strong></td>
+                        <td>{{ wallet.created_at.strftime('%Y-%m-%d %H:%M:%S') if wallet.created_at else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Last Used:</strong></td>
+                        <td>{{ wallet.last_used_at.strftime('%Y-%m-%d %H:%M:%S') if wallet.last_used_at else '<span class="text-muted">Never</span>' | safe }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Activity Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div class="stat-card primary">
+                            <div class="stat-number">{{ wallet.total_assignments or 0 }}</div>
+                            <div class="stat-label">Total Assignments</div>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="stat-card success">
+                            <div class="stat-number">{{ transaction_count or 0 }}</div>
+                            <div class="stat-label">Transactions</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card info">
+                            <div class="stat-number">{{ "%.2f"|format(wallet.total_assignment_volume or 0) }}</div>
+                            <div class="stat-label">Assignment Volume (USDT)</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card warning">
+                            <div class="stat-number">{{ "%.2f"|format(total_volume or 0) }}</div>
+                            <div class="stat-label">Transaction Volume (USDT)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if wallet.notes %}
+<!-- Notes Section -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-sticky-note me-2"></i>Notes
+        </h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-0">{{ wallet.notes }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Assignment History -->
+{% if recent_assignments %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-history me-2"></i>Recent Assignment History
+        </h5>
+        <a href="{{ url_for('admin_web.wallet_assignments', wallet_id=wallet.id) }}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-list me-1"></i>View All
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Assigned</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in recent_assignments %}
+                    <tr>
+                        <td>
+                            {% if assignment.user %}
+                            <div>
+                                <strong>{{ assignment.user.get_full_name() }}</strong>
+                                <br><small class="text-muted">{{ assignment.user.username }}</small>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">User #{{ assignment.user_id }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ assignment.assigned_at.strftime('%m/%d/%Y %H:%M') if assignment.assigned_at else 'N/A' }}</small>
+                        </td>
+                        <td>
+                            {% if assignment.assigned_at and assignment.expires_at %}
+                            {% set duration = assignment.expires_at - assignment.assigned_at %}
+                            <small class="text-muted">{{ duration.total_seconds() // 60 }} min</small>
+                            {% else %}
+                            <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if assignment.completed_at %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif assignment.cancelled_at %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% elif assignment.is_active %}
+                            <span class="badge bg-primary">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if assignment.actual_amount %}
+                            <span class="text-success"><strong>{{ "%.2f"|format(assignment.actual_amount) }} USDT</strong></span>
+                            {% elif assignment.expected_amount %}
+                            <span class="text-muted">{{ "%.2f"|format(assignment.expected_amount) }} USDT (expected)</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Buttons -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-tools me-2"></i>Actions
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-primary" onclick="checkWalletBalance({{ wallet.id }})">
+                <i class="fas fa-sync me-1"></i>Check Balance
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="copyToClipboard('{{ wallet.address }}')">
+                <i class="fas fa-copy me-1"></i>Copy Address
+            </button>
+            <button type="button" class="btn btn-warning" onclick="toggleWalletStatus({{ wallet.id }}, '{{ wallet.status.value }}')">
+                <i class="fas fa-{{ 'pause' if wallet.status.value == 'AVAILABLE' else 'play' }} me-1"></i>
+                {{ 'Set to Maintenance' if wallet.status.value == 'AVAILABLE' else 'Set to Available' }}
+            </button>
+            {% if not wallet.assigned_to %}
+            <button type="button" class="btn btn-danger" onclick="deleteWallet({{ wallet.id }})">
+                <i class="fas fa-trash me-1"></i>Delete Wallet
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.stat-card.primary {
+    background-color: rgba(13, 110, 253, 0.1);
+    border: 1px solid rgba(13, 110, 253, 0.2);
+}
+
+.stat-card.success {
+    background-color: rgba(25, 135, 84, 0.1);
+    border: 1px solid rgba(25, 135, 84, 0.2);
+}
+
+.stat-card.info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border: 1px solid rgba(13, 202, 240, 0.2);
+}
+
+.stat-card.warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        showToast('Address copied to clipboard!', 'success');
+    }, function(err) {
+        console.error('Failed to copy: ', err);
+        showToast('Failed to copy address', 'error');
+    });
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0 position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        document.body.removeChild(toast);
+    });
+}
+
+function checkWalletBalance(walletId) {
+    // Implementation for checking wallet balance
+    showToast('Checking wallet balance...', 'info');
+}
+
+function toggleWalletStatus(walletId, currentStatus) {
+    // Implementation for toggling wallet status
+    const newStatus = currentStatus === 'AVAILABLE' ? 'MAINTENANCE' : 'AVAILABLE';
+    showToast(`Setting wallet to ${newStatus}...`, 'info');
+}
+
+function deleteWallet(walletId) {
+    if (confirm('Are you sure you want to delete this wallet? This action cannot be undone.')) {
+        // Implementation for deleting wallet
+        showToast('Deleting wallet...', 'info');
+    }
+}
+</script>
+{% endblock %}
