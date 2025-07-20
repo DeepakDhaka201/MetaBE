@@ -31,7 +31,7 @@
                                     <th>Investment Range</th>
                                     <th>Return</th>
                                     <th>Duration</th>
-                                    <th>Launch Date</th>
+                                    <th>End Date</th>
                                     <th>Status</th>
                                     <th>Investors</th>
                                     <th>Total Invested</th>
@@ -64,23 +64,19 @@
                                     </td>
                                     <td>{{ package.duration_days }} days</td>
                                     <td>
-                                        {% if package.launch_date %}
-                                        {{ package.launch_date.strftime('%Y-%m-%d') }}
+                                        {% if package.end_date %}
+                                        {{ package.end_date.strftime('%Y-%m-%d') }}
                                         {% else %}
-                                        <span class="text-muted">Not set</span>
+                                        <span class="text-muted">No limit</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if package.status.value == 'active' %}
                                         <span class="badge badge-success">Active</span>
-                                        {% elif package.status.value == 'draft' %}
-                                        <span class="badge badge-secondary">Draft</span>
-                                        {% elif package.status.value == 'launched' %}
-                                        <span class="badge badge-info">Launched</span>
-                                        {% elif package.status.value == 'completed' %}
-                                        <span class="badge badge-primary">Completed</span>
+                                        {% elif package.status.value == 'cancelled' %}
+                                        <span class="badge badge-danger">Cancelled</span>
                                         {% else %}
-                                        <span class="badge badge-danger">{{ package.status.value.title() }}</span>
+                                        <span class="badge badge-secondary">{{ package.status.value.title() }}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ package.total_investors }}</td>

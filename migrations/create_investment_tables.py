@@ -56,7 +56,6 @@ def create_sample_package():
             max_amount=10000.0,
             total_return_percentage=25.0,  # 25% total return
             duration_days=180,  # 6 months
-            launch_date=date.today() + timedelta(days=30),  # Launch in 30 days
             end_date=date.today() + timedelta(days=90),     # Accept investments for 90 days
             status=PackageStatus.ACTIVE,
             is_featured=True,
@@ -69,7 +68,7 @@ def create_sample_package():
         print("   - Sample 'MXC Launch Package' created")
         print(f"     Min: $100, Max: $10,000")
         print(f"     Return: 25% over 180 days")
-        print(f"     Launch Date: {sample_package.launch_date}")
+        print(f"     End Date: {sample_package.end_date}")
 
     except Exception as e:
         print(f"   - Warning: Could not create sample package: {str(e)}")

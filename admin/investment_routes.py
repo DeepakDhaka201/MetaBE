@@ -59,9 +59,8 @@ def create_package():
                 max_amount=Decimal(data['max_amount']) if data.get('max_amount') else None,
                 total_return_percentage=float(data['total_return_percentage']),
                 duration_days=int(data['duration_days']),
-                launch_date=datetime.strptime(data['launch_date'], '%Y-%m-%d').date() if data.get('launch_date') else None,
                 end_date=datetime.strptime(data['end_date'], '%Y-%m-%d').date() if data.get('end_date') else None,
-                status=PackageStatus(data.get('status', 'draft')),
+                status=PackageStatus(data.get('status', 'active')),
                 is_featured=bool(data.get('is_featured')),
                 sort_order=int(data.get('sort_order', 0))
             )
@@ -97,9 +96,8 @@ def edit_package(package_id):
             package.max_amount = Decimal(data['max_amount']) if data.get('max_amount') else None
             package.total_return_percentage = float(data['total_return_percentage'])
             package.duration_days = int(data['duration_days'])
-            package.launch_date = datetime.strptime(data['launch_date'], '%Y-%m-%d').date() if data.get('launch_date') else None
             package.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date() if data.get('end_date') else None
-            package.status = PackageStatus(data.get('status', 'draft'))
+            package.status = PackageStatus(data.get('status', 'active'))
             package.is_featured = bool(data.get('is_featured'))
             package.sort_order = int(data.get('sort_order', 0))
             package.updated_at = datetime.utcnow()

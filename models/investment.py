@@ -157,7 +157,7 @@ class UserInvestment(db.Model):
     investment_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     
     # Calculated dates
-    returns_start_date = db.Column(db.Date)  # When returns begin (package launch date)
+    returns_start_date = db.Column(db.Date)  # When returns begin (typically investment date)
     maturity_date = db.Column(db.Date)       # When investment matures
     
     # Return tracking

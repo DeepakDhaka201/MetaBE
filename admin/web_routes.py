@@ -3,7 +3,7 @@ Admin Web Routes for MetaX Coin Backend
 Flask UI routes that render HTML templates for admin operations
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token, create_refresh_token
 from datetime import datetime, timedelta
 from sqlalchemy import desc, func
@@ -18,6 +18,107 @@ from services.admin_config import get_config, set_config
 from auth.utils import admin_required, admin_session_required
 
 admin_web_bp = Blueprint('admin_web', __name__, url_prefix='/admin')
+
+
+# ============================================================================
+# ADMIN API ROUTES (for frontend AJAX calls)
+# ============================================================================
+
+@admin_web_bp.route('/api/user/<int:user_id>/toggle-status', methods=['POST'])
+@admin_required
+def api_toggle_user_status(user_id):
+    """Toggle user active status (API endpoint for admin frontend)"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        # Toggle status
+        user.is_active = not user.is_active
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        status_text = 'activated' if user.is_active else 'deactivated'
+        current_app.logger.info(f'User {user_id} {status_text} by admin {current_user_id}')
+
+        return jsonify({
+            'success': True,
+            'message': f'User {status_text} successfully',
+            'is_active': user.is_active
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Admin toggle user status error: {str(e)}')
+        return jsonify({'success': False, 'message': 'Failed to update user status'}), 500
+
+
+@admin_web_bp.route('/api/transaction/<int:transaction_id>/approve', methods=['POST'])
+@admin_required
+def api_approve_transaction(transaction_id):
+    """Approve transaction (API endpoint for admin frontend)"""
+    try:
+        current_user_id = get_jwt_identity()
+        transaction = Transaction.query.get(transaction_id)
+
+        if not transaction:
+            return jsonify({'success': False, 'message': 'Transaction not found'}), 404
+
+        if transaction.status != TransactionStatus.PENDING:
+            return jsonify({'success': False, 'message': 'Transaction is not pending'}), 400
+
+        # Update transaction status
+        transaction.status = TransactionStatus.COMPLETED
+        transaction.admin_notes = f'Approved by admin {current_user_id}'
+        transaction.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        current_app.logger.info(f'Transaction {transaction_id} approved by admin {current_user_id}')
+
+        return jsonify({
+            'success': True,
+            'message': 'Transaction approved successfully'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Admin approve transaction error: {str(e)}')
+        return jsonify({'success': False, 'message': 'Failed to approve transaction'}), 500
+
+
+@admin_web_bp.route('/api/transaction/<int:transaction_id>/reject', methods=['POST'])
+@admin_required
+def api_reject_transaction(transaction_id):
+    """Reject transaction (API endpoint for admin frontend)"""
+    try:
+        current_user_id = get_jwt_identity()
+        transaction = Transaction.query.get(transaction_id)
+
+        if not transaction:
+            return jsonify({'success': False, 'message': 'Transaction not found'}), 404
+
+        if transaction.status != TransactionStatus.PENDING:
+            return jsonify({'success': False, 'message': 'Transaction is not pending'}), 400
+
+        # Update transaction status
+        transaction.status = TransactionStatus.FAILED
+        transaction.admin_notes = f'Rejected by admin {current_user_id}'
+        transaction.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        current_app.logger.info(f'Transaction {transaction_id} rejected by admin {current_user_id}')
+
+        return jsonify({
+            'success': True,
+            'message': 'Transaction rejected successfully'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Admin reject transaction error: {str(e)}')
+        return jsonify({'success': False, 'message': 'Failed to reject transaction'}), 500
 
 
 @admin_web_bp.route('/login', methods=['GET', 'POST'])
@@ -276,18 +377,27 @@ def user_detail(user_id):
     """User detail page"""
     try:
         user = User.query.get_or_404(user_id)
-        
+
+        # Initialize user wallets if they don't exist
+        from models.wallet import Wallet
+        Wallet.initialize_user_wallets(user_id)
+        db.session.commit()
+
         # Get user transactions
         transactions = Transaction.query.filter_by(user_id=user_id).order_by(desc(Transaction.created_at)).limit(20).all()
-        
+
         # Get user referrals (users who have this user as sponsor)
         referrals = User.query.filter_by(sponsor_id=user_id).all()
-        
-        return render_template('admin/user_detail.html', 
+
+        # Get wallet balances for debugging
+        wallet_balances = Wallet.get_user_balances(user_id)
+
+        return render_template('admin/user_detail.html',
                              user=user,
                              transactions=transactions,
-                             referrals=referrals)
-        
+                             referrals=referrals,
+                             wallet_balances=wallet_balances)
+
     except Exception as e:
         flash(f'Error loading user details: {str(e)}', 'error')
         return redirect(url_for('admin_web.users'))

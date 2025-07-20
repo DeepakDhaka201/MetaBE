@@ -74,27 +74,48 @@
     <div class="col-lg-8 mb-4">
         <div class="row">
             <!-- Account Balances -->
-            <div class="col-md-6 mb-4">
+            <div class="col-md-12 mb-4">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Account Balances</h5>
+                        <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Wallet Balances</h5>
                     </div>
                     <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-6">
-                                <h3 class="text-success">${{ "{:.2f}".format(user.get_wallet_balance('available_fund') + user.get_wallet_balance('main_balance')) }}</h3>
-                                <small class="text-muted">USDT Balance</small>
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <h4 class="text-success">${{ "{:.2f}".format(wallet_balances['available_fund']['balance'] if wallet_balances and 'available_fund' in wallet_balances else user.get_wallet_balance('available_fund')) }}</h4>
+                                <small class="text-muted">Available Fund</small>
                             </div>
-                            <div class="col-6">
-                                <h3 class="text-primary">{{ "{:.2f}".format(0) }}</h3>
-                                <small class="text-muted">MXC Balance</small>
+                            <div class="col-md-3 text-center">
+                                <h4 class="text-info">${{ "{:.2f}".format(wallet_balances['total_gain']['balance'] if wallet_balances and 'total_gain' in wallet_balances else user.get_wallet_balance('total_gain')) }}</h4>
+                                <small class="text-muted">Total Gain</small>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <h4 class="text-warning">${{ "{:.2f}".format(wallet_balances['level_bonus']['balance'] if wallet_balances and 'level_bonus' in wallet_balances else user.get_wallet_balance('level_bonus')) }}</h4>
+                                <small class="text-muted">Level Bonus</small>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <h4 class="text-primary">${{ "{:.2f}".format(wallet_balances['total_referral']['balance'] if wallet_balances and 'total_referral' in wallet_balances else user.get_wallet_balance('total_referral')) }}</h4>
+                                <small class="text-muted">Total Referral</small>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-12 text-center">
+                                {% set available_fund = wallet_balances['available_fund']['balance'] if wallet_balances and 'available_fund' in wallet_balances else user.get_wallet_balance('available_fund') %}
+                                {% set total_gain = wallet_balances['total_gain']['balance'] if wallet_balances and 'total_gain' in wallet_balances else user.get_wallet_balance('total_gain') %}
+                                {% set level_bonus = wallet_balances['level_bonus']['balance'] if wallet_balances and 'level_bonus' in wallet_balances else user.get_wallet_balance('level_bonus') %}
+                                {% set total_referral = wallet_balances['total_referral']['balance'] if wallet_balances and 'total_referral' in wallet_balances else user.get_wallet_balance('total_referral') %}
+                                <h3 class="text-dark">${{ "{:.2f}".format(available_fund + total_gain + level_bonus + total_referral) }}</h3>
+                                <small class="text-muted">Total Balance (All Wallets)</small>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Referral Information -->
+        </div>
+
+        <!-- Referral Information -->
+        <div class="row">
             <div class="col-md-6 mb-4">
                 <div class="card">
                     <div class="card-header">
@@ -280,34 +301,64 @@
 
 <!-- Edit Balance Modal -->
 <div class="modal fade" id="editBalanceModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit User Balance</h5>
+                <h5 class="modal-title">Edit User Wallet Balances</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editBalanceForm">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="usdtBalance" class="form-label">USDT Balance</label>
-                        <input type="number" class="form-control" id="usdtBalance" name="usdt_balance"
-                               value="{{ user.get_wallet_balance('available_fund') + user.get_wallet_balance('main_balance') }}" step="0.01" min="0">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="availableFund" class="form-label">Available Fund ($)</label>
+                                <input type="number" class="form-control" id="availableFund" name="available_fund"
+                                       value="{{ wallet_balances['available_fund']['balance'] if wallet_balances and 'available_fund' in wallet_balances else user.get_wallet_balance('available_fund') }}" step="0.01" min="0">
+                                <small class="text-muted">Main spending wallet</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="totalGain" class="form-label">Total Gain ($)</label>
+                                <input type="number" class="form-control" id="totalGain" name="total_gain"
+                                       value="{{ wallet_balances['total_gain']['balance'] if wallet_balances and 'total_gain' in wallet_balances else user.get_wallet_balance('total_gain') }}" step="0.01" min="0">
+                                <small class="text-muted">Investment returns + staking rewards</small>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="mxcBalance" class="form-label">MXC Balance</label>
-                        <input type="number" class="form-control" id="mxcBalance" name="mxc_balance"
-                               value="0" step="0.01" min="0">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="levelBonus" class="form-label">Level Bonus ($)</label>
+                                <input type="number" class="form-control" id="levelBonus" name="level_bonus"
+                                       value="{{ wallet_balances['level_bonus']['balance'] if wallet_balances and 'level_bonus' in wallet_balances else user.get_wallet_balance('level_bonus') }}" step="0.01" min="0">
+                                <small class="text-muted">Multi-level commissions</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="totalReferral" class="form-label">Total Referral ($)</label>
+                                <input type="number" class="form-control" id="totalReferral" name="total_referral"
+                                       value="{{ wallet_balances['total_referral']['balance'] if wallet_balances and 'total_referral' in wallet_balances else user.get_wallet_balance('total_referral') }}" step="0.01" min="0">
+                                <small class="text-muted">Direct referral commissions</small>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="reason" class="form-label">Reason for Change</label>
-                        <textarea class="form-control" id="reason" name="reason" rows="3" 
+                        <textarea class="form-control" id="reason" name="reason" rows="3"
                                   placeholder="Enter reason for balance adjustment..." required></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> Total Income wallet is automatically calculated as the sum of Total Gain, Level Bonus, and Total Referral.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-1"></i>Update Balance
+                        <i class="fas fa-save me-1"></i>Update Balances
                     </button>
                 </div>
             </form>
@@ -405,12 +456,24 @@ function rejectTransaction(transactionId) {
 // Handle balance edit form
 $('#editBalanceForm').on('submit', function(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(this);
-    const data = Object.fromEntries(formData);
-    
+    const formObject = Object.fromEntries(formData);
+
+    // Prepare data for the existing API endpoint
+    const wallets = {};
+    if (formObject.available_fund !== undefined) wallets.available_fund = parseFloat(formObject.available_fund);
+    if (formObject.total_gain !== undefined) wallets.total_gain = parseFloat(formObject.total_gain);
+    if (formObject.level_bonus !== undefined) wallets.level_bonus = parseFloat(formObject.level_bonus);
+    if (formObject.total_referral !== undefined) wallets.total_referral = parseFloat(formObject.total_referral);
+
+    const data = {
+        wallets: wallets,
+        notes: formObject.reason
+    };
+
     $.ajax({
-        url: `/admin/api/user/{{ user.id }}/balance`,
+        url: `/api/admin/users/{{ user.id }}/wallets`,
         method: 'PUT',
         headers: {
             'Authorization': 'Bearer ' + getAdminToken(),
@@ -418,18 +481,21 @@ $('#editBalanceForm').on('submit', function(e) {
         },
         data: JSON.stringify(data),
         success: function(response) {
-            if (response.success) {
+            if (response.message) {
                 showAlert(response.message, 'success');
                 const modal = bootstrap.Modal.getInstance(document.getElementById('editBalanceModal'));
                 modal.hide();
                 setTimeout(() => location.reload(), 1000);
             } else {
-                showAlert(response.message, 'danger');
+                showAlert('Balances updated successfully', 'success');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editBalanceModal'));
+                modal.hide();
+                setTimeout(() => location.reload(), 1000);
             }
         },
         error: function(xhr) {
             const response = xhr.responseJSON;
-            showAlert(response?.message || 'An error occurred', 'danger');
+            showAlert(response?.error || response?.message || 'An error occurred', 'danger');
         }
     });
 });

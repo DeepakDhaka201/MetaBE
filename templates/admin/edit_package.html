@@ -1,13 +1,13 @@
 {% extends "admin/base.html" %}
 
-{% block title %}Create Investment Package - Admin{% endblock %}
+{% block title %}Edit Investment Package - Admin{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Create Investment Package</h2>
+                <h2>Edit Investment Package</h2>
                 <a href="{{ url_for('admin_investment.list_packages') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Back to Packages
                 </a>
@@ -24,37 +24,39 @@
                                 <div class="form-group">
                                     <label for="name">Package Name *</label>
                                     <input type="text" class="form-control" id="name" name="name" required
-                                           placeholder="e.g., MXC Launch Package">
+                                           value="{{ package.name }}" placeholder="e.g., MXC Launch Package">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="description">Description</label>
                                     <textarea class="form-control" id="description" name="description" rows="3"
-                                              placeholder="Brief description of the investment package"></textarea>
+                                              placeholder="Brief description of the investment package">{{ package.description or '' }}</textarea>
                                 </div>
 
+                                <!-- Status and Settings -->
                                 <div class="form-group">
                                     <label for="status">Status *</label>
                                     <select class="form-control" id="status" name="status" required>
-                                        <option value="draft">Draft</option>
-                                        <option value="active">Active</option>
-                                        <option value="launched">Launched</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
+                                        <option value="active" {% if package.status.value == 'active' %}selected{% endif %}>Active</option>
+                                        <option value="cancelled" {% if package.status.value == 'cancelled' %}selected{% endif %}>Cancelled</option>
                                     </select>
                                 </div>
 
-                                <div class="form-check mb-3">
-                                    <input type="checkbox" class="form-check-input" id="is_featured" name="is_featured">
-                                    <label class="form-check-label" for="is_featured">
-                                        Featured Package
-                                    </label>
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="is_featured" name="is_featured" 
+                                               {% if package.is_featured %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_featured">
+                                            Featured Package
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">Featured packages appear at the top</small>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="sort_order">Sort Order</label>
                                     <input type="number" class="form-control" id="sort_order" name="sort_order" 
-                                           value="0" min="0" max="100">
+                                           value="{{ package.sort_order }}" min="0" placeholder="0">
                                     <small class="form-text text-muted">Lower numbers appear first</small>
                                 </div>
                             </div>
@@ -66,13 +68,13 @@
                                 <div class="form-group">
                                     <label for="min_amount">Minimum Investment Amount ($) *</label>
                                     <input type="number" class="form-control" id="min_amount" name="min_amount" 
-                                           step="0.01" min="1" required placeholder="100.00">
+                                           step="0.01" min="1" required value="{{ package.min_amount }}" placeholder="100.00">
                                 </div>
 
                                 <div class="form-group">
                                     <label for="max_amount">Maximum Investment Amount ($)</label>
                                     <input type="number" class="form-control" id="max_amount" name="max_amount" 
-                                           step="0.01" min="1" placeholder="10000.00">
+                                           step="0.01" min="1" value="{{ package.max_amount or '' }}" placeholder="10000.00">
                                     <small class="form-text text-muted">Leave empty for no limit</small>
                                 </div>
 
@@ -80,42 +82,42 @@
                                     <label for="total_return_percentage">Total Return Percentage (%) *</label>
                                     <input type="number" class="form-control" id="total_return_percentage" 
                                            name="total_return_percentage" step="0.1" min="0" max="1000" required 
-                                           placeholder="25.0">
+                                           value="{{ package.total_return_percentage }}" placeholder="25.0">
                                     <small class="form-text text-muted">Total return over the entire duration</small>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="duration_days">Duration (Days) *</label>
                                     <input type="number" class="form-control" id="duration_days" name="duration_days" 
-                                           min="1" max="3650" required placeholder="180">
+                                           min="1" max="3650" required value="{{ package.duration_days }}" placeholder="180">
                                     <small class="form-text text-muted">How long the investment runs</small>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="end_date">End Date</label>
-                                    <input type="date" class="form-control" id="end_date" name="end_date">
+                                    <input type="date" class="form-control" id="end_date" name="end_date"
+                                           value="{{ package.end_date.strftime('%Y-%m-%d') if package.end_date else '' }}">
                                     <small class="form-text text-muted">When package stops accepting new investments</small>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Calculated Information -->
+                        <!-- Return Calculation Preview -->
                         <div class="row mt-4">
                             <div class="col-12">
-                                <h5 class="mb-3">Calculated Information</h5>
-                                <div class="alert alert-info">
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <strong>Daily Return Rate:</strong>
-                                            <span id="daily_rate">0.000%</span>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <strong>Example Daily Return ($1000):</strong>
-                                            $<span id="example_daily">0.00</span>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <strong>Example Total Return ($1000):</strong>
-                                            $<span id="example_total">0.00</span>
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6>Return Calculation Preview</h6>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <strong>Daily Rate:</strong> <span id="daily_rate">0.000%</span>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Example ($1,000):</strong> $<span id="example_daily">0.00</span>/day
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Total Return ($1,000):</strong> $<span id="example_total">0.00</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -124,7 +126,7 @@
 
                         <div class="form-group mt-4">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Create Package
+                                <i class="fas fa-save"></i> Update Package
                             </button>
                             <a href="{{ url_for('admin_investment.list_packages') }}" class="btn btn-secondary ml-2">
                                 Cancel
@@ -156,13 +158,8 @@ function calculateReturns() {
 document.getElementById('total_return_percentage').addEventListener('input', calculateReturns);
 document.getElementById('duration_days').addEventListener('input', calculateReturns);
 
-// Set default end date to 90 days from now
+// Calculate on page load
 document.addEventListener('DOMContentLoaded', function() {
-    const today = new Date();
-    const endDate = new Date(today.getTime() + (90 * 24 * 60 * 60 * 1000));
-
-    document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
-
     calculateReturns();
 });
 </script>

@@ -103,17 +103,27 @@ def create_app(config_class=Config):
     
     # Initialize database tables
     with app.app_context():
-        db.create_all()
-        
+        try:
+            db.create_all()
+            app.logger.info('Database tables created successfully')
+        except Exception as e:
+            app.logger.warning(f'Database tables may already exist: {e}')
+
         # Initialize admin configuration if not exists
-        from models.admin import AdminConfig
-        from services.admin_config import initialize_default_config
-        initialize_default_config()
-        
+        try:
+            from models.admin import AdminConfig
+            from services.admin_config import initialize_default_config
+            initialize_default_config()
+        except Exception as e:
+            app.logger.warning(f'Admin config initialization warning: {e}')
+
         # Initialize default MXC price if not exists
-        from models.mxc import MXCPrice
-        from services.mxc_service import initialize_default_mxc_price
-        initialize_default_mxc_price()
+        try:
+            from models.mxc import MXCPrice
+            from services.mxc_service import initialize_default_mxc_price
+            initialize_default_mxc_price()
+        except Exception as e:
+            app.logger.warning(f'MXC price initialization warning: {e}')
     
     # Setup background tasks
     if not app.debug and not app.testing:
